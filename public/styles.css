@@ -1,0 +1,45 @@
+:root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#3b82f6; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; background:var(--bg); color:var(--text); }
+header { padding:20px; display:flex; align-items:center; justify-content:center; gap:16px; background:linear-gradient(90deg, #111827, #0b1224); border-bottom:1px solid #1f2937; position:relative; }
+h1 { margin:0; font-weight:700; }
+.role-nav { position:absolute; right:16px; top:50%; transform:translateY(-50%); display:flex; gap:8px; align-items:center; }
+.role-nav label { color: var(--muted); font-size:12px; }
+.role-nav select { background:#0b1220; color:var(--text); border:1px solid #1f2937; border-radius:8px; padding:6px 8px; }
+/* Make sheet menu look like role menu */
+.config select#sheet { background:#0b1220; color:var(--text); border:1px solid #1f2937; border-radius:8px; padding:6px 8px; }
+.badge { background:#ef4444; color:white; border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; margin-left:6px; display:none; }
+.notif-wrap { position: relative; }
+.notif-dropdown { display:none; position:absolute; right:0; top:28px; background:#0b1220; border:1px solid #1f2937; border-radius:8px; min-width:260px; z-index: 20; box-shadow: 0 10px 24px rgba(0,0,0,0.4); }
+.notif-wrap.open .notif-dropdown { display:block; }
+.notif-head { padding:8px 10px; font-weight:700; border-bottom:1px solid #1f2937; }
+.notif-actions { display:flex; gap:6px; padding:4px 6px; border-bottom:1px solid #1f2937; }
+.notif-dropdown ul { list-style:none; padding:0; margin:0; max-height:260px; overflow:auto; }
+.notif-dropdown li { padding:8px 10px; border-bottom:1px solid #1f2937; font-size:12px; color:var(--text); }
+.notif-dropdown li:last-child { border-bottom:none; }
+.notif-empty { padding:10px; color:var(--muted); font-size:12px; display:none; }
+button.danger { background:#ef4444; color:white; }
+main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.config { background:var(--card); border:1px solid #1f2937; border-radius:12px; padding:16px; display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+.field { display:flex; flex-direction:column; gap:6px; }
+label { color: var(--muted); font-size: 12px; }
+input { padding:10px 12px; border-radius:8px; border:1px solid #1f2937; background:#0b1220; color:var(--text); }
+/* Match selects to input styling inside config */
+.config select { padding:10px 12px; border-radius:8px; border:1px solid #1f2937; background:#0b1220; color:var(--text); }
+input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; }
+.actions { grid-column: 1 / -1; display:flex; gap:8px; margin-top:8px; }
+button { cursor:pointer; border:1px solid #1f2937; background: var(--accent); color:#04130a; padding:10px 14px; border-radius:8px; font-weight:600; }
+button.secondary { background: var(--accent-2); color:#06142a; }
+button:disabled { opacity:0.6; cursor: not-allowed; }
+.status { min-height: 20px; color: var(--muted); margin: 0; }
+.table-wrap { margin-top: 16px; background:var(--card); border:1px solid #1f2937; border-radius:12px; padding: 12px; overflow:auto; }
+table { width: 100%; border-collapse: collapse; }
+#timetable { table-layout: auto; }
+td, th { border: 1px solid #1f2937; padding: 8px 10px; }
+#timetable td, #timetable th { font-size: 12px; padding: 6px 8px; vertical-align: top; min-width: 120px; white-space: normal; overflow-wrap: anywhere; }
+th { text-align:left; background:#101827; }
+td[contenteditable="true"] { background: #0c1a2a; outline: none; }
+@media (max-width: 640px) {
+  .config { grid-template-columns: 1fr; }
+}
+
