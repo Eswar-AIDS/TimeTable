@@ -1,0 +1,5 @@
+# Netlify redirects file for SPA routing
+# Place this in the public folder so it gets deployed
+
+/*    /index.html   200
+
