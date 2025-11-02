@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">Timetable Generator</h1>
+            <div class="user-info">
+                <span class="user-greeting">Hi, <span id="userEmail">user@srec.ac.in</span></span>
+                <select id="roleSelect" class="role-dropdown">
+                    <option value="Admin">Role Admin</option>
+                    <option value="Student">Student</option>
+                </select>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <!-- Configuration Section -->
+        <section class="config-section">
+            <div class="config-grid">
+                <div class="config-item">
+                    <label for="sheetSelect">Sheet:</label>
+                    <select id="sheetSelect" class="sheet-select">
+                        <option value="TT">TT</option>
+                    </select>
+                    <input type="text" id="newSheetInput" class="new-sheet-input" placeholder="New TT (optional)">
+                </div>
+
+                <div class="config-item">
+                    <label for="daysInput">Days (comma separated):</label>
+                    <input type="text" id="daysInput" class="config-input" value="Mon, Tue, Wed, Thu, Fri">
+                </div>
+
+                <div class="config-item">
+                    <label for="slotsInput">Slots per day:</label>
+                    <input type="text" id="slotsInput" class="config-input" value="6">
+                </div>
+
+                <div class="config-item">
+                    <label for="coursesInput">Courses (comma separated):</label>
+                    <input type="text" id="coursesInput" class="config-input" placeholder="e.g., Math, Physics, Chemistry">
+                </div>
+
+                <div class="config-item full-width">
+                    <label for="labSessionsInput">Lab sessions (name:blocks; comma separated):</label>
+                    <input type="text" id="labSessionsInput" class="config-input" value="Physics Lab:2, Chem Lab:1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="generateBtn" class="btn btn-generate">Generate & Save</button>
+                <button id="loadBtn" class="btn btn-load">Load Sheet</button>
+                <button id="saveBtn" class="btn btn-save">Save to Sheet</button>
+            </div>
+
+            <div class="status">
+                <span id="statusText" class="status-text">Loaded</span>
+            </div>
+        </section>
+
+        <!-- Timetable Section -->
+        <section class="timetable-section">
+            <div class="timetable-container">
+                <table id="timetableTable" class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th class="day-header"></th>
+                            <!-- Time slots will be inserted here by JavaScript -->
+                        </tr>
+                    </thead>
+                    <tbody id="timetableBody">
+                        <!-- Timetable rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
