@@ -60,15 +60,25 @@ function getSpreadsheetIdForWrite(): string {
   );
 }
 
-async function ensureSheetExists(sheetName: string): Promise<void> {
+async function ensureSheetExistsIn(spreadsheetId: string, sheetName: string): Promise<void> {
   const sheets = getSheetsClient();
-  const ss = await sheets.spreadsheets.get({ spreadsheetId: getSpreadsheetIdForWrite() });
+  const ss = await sheets.spreadsheets.get({ spreadsheetId });
   const exists = (ss.data.sheets || []).some(s => s.properties?.title === sheetName);
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: getSpreadsheetIdForWrite(),
+      spreadsheetId,
       requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
     });
+  }
+}
+
+async function ensureSheetExists(sheetName: string): Promise<void> {
+  const writeId = getSpreadsheetIdForWrite();
+  const readId = getSpreadsheetIdForRead();
+  // Ensure in both (handles setups with distinct read vs write sheets)
+  const ids = Array.from(new Set([writeId, readId]));
+  for (const id of ids) {
+    try { await ensureSheetExistsIn(id, sheetName); } catch {}
   }
 }
 
