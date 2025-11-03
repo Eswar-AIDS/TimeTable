@@ -118,17 +118,22 @@
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || 'Failed');
       const values = data.values || [];
-      const header = (values[0] || []).map(x => String(x || '').toLowerCase());
+      const headerRow = (values[0] || []).map(x => String(x || ''));
+      const header = headerRow.map(x => x.toLowerCase());
       const looksLikeCourses = header.some(h => ['course code','course title','faculty in-charge','faculty incharge','acronym'].includes(h));
+      // Heuristic for simple subject→faculty sheets: few columns, many rows, no time labels
+      const looksLikeSubjectFaculty = (headerRow.length > 0 && headerRow.length <= 3 && values.length > 5 && !header.some(h => h.includes(':') || h.includes('break') || h.includes('lunch')));
 
-      if(looksLikeCourses){
+      if(looksLikeCourses || looksLikeSubjectFaculty){
         // Extract names from Acronym or Course Title; split labs by the word 'lab'
         const acrIdx = header.indexOf('acronym');
         const titleIdx = header.indexOf('course title');
         const names = [];
         for(let i = 1; i < values.length; i++){
           const row = values[i] || [];
-          const name = (acrIdx >= 0 ? row[acrIdx] : undefined) || (titleIdx >= 0 ? row[titleIdx] : undefined) || '';
+          // Prefer acronym/title; fallback to first column for subject→faculty sheets
+          const primary = (acrIdx >= 0 ? row[acrIdx] : undefined) || (titleIdx >= 0 ? row[titleIdx] : undefined) || row[0] || '';
+          const name = primary;
           const trimmed = String(name || '').trim();
           if(trimmed) names.push(trimmed);
         }
