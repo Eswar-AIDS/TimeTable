@@ -73,10 +73,22 @@ async function getAllUsers(): Promise<Array<{ email: string; passwordHash: strin
 }
 
 async function ensureRolesHeader() {
-  const rows = await readRange({ sheetName: ROLES_SHEET, rangeA1: 'A1:C1' });
-  const header = rows[0] || [];
-  if ((header[0] || '').toLowerCase() !== 'admin' || (header[1] || '').toLowerCase() !== 'faculty' || (header[2] || '').toLowerCase() !== 'student') {
-    await writeRange({ sheetName: ROLES_SHEET, rangeA1: 'A1:C1' }, [[ 'Admin', 'Faculty', 'Student' ]]);
+  const sheets = getSheetsClient();
+  const spreadsheetId = getEditableSpreadsheetId();
+  await ensureSheetExistsAuth(ROLES_SHEET);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${ROLES_SHEET}'!A1:C1`
+  });
+  const header = (res.data.values as string[][])?.[0] || [];
+  const ok = (header[0] || '').toLowerCase() === 'admin' && (header[1] || '').toLowerCase() === 'faculty' && (header[2] || '').toLowerCase() === 'student';
+  if (!ok) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${ROLES_SHEET}'!A1:C1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[ 'Admin', 'Faculty', 'Student' ]] }
+    });
   }
 }
 
@@ -86,7 +98,13 @@ let rolesLoadPromise: Promise<RolesColumns> | null = null;
 
 async function readRolesFresh(): Promise<RolesColumns> {
   await ensureRolesHeader();
-  const rows = await readRange({ sheetName: ROLES_SHEET, rangeA1: 'A2:C2000' });
+  const sheets = getSheetsClient();
+  const spreadsheetId = getEditableSpreadsheetId();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${ROLES_SHEET}'!A2:C2000`
+  });
+  const rows = (res.data.values as string[][]) || [];
   const admin: string[] = []; const faculty: string[] = []; const student: string[] = [];
   for (const r of rows) {
     if (r[0]) admin.push(String(r[0]).toLowerCase());
@@ -121,7 +139,14 @@ async function writeRoles(columns: RolesColumns) {
       columns.student[i] || ''
     ]);
   }
-  await writeRange({ sheetName: ROLES_SHEET, rangeA1: 'A2:C2000' }, values.length ? values : [['','','']]);
+  const sheets = getSheetsClient();
+  const spreadsheetId = getEditableSpreadsheetId();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${ROLES_SHEET}'!A2:C2000`,
+    valueInputOption: 'RAW',
+    requestBody: { values: values.length ? values : [['','','']] }
+  });
   rolesCache = { value: columns, expiresAt: Date.now() + 5 * 60 * 1000 };
 }
 

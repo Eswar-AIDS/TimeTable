@@ -61,11 +61,17 @@
       <div id="createWrap" style="display:none; margin-top:12px;">
         <div class="row">
           <label for="newPassword">Create password</label>
-          <input id="newPassword" type="password" placeholder="At least 8 characters" />
+          <div class="pwd-wrap">
+            <input id="newPassword" type="password" placeholder="At least 8 characters" />
+            <button id="toggleNewPwd" type="button" class="eye-btn" aria-label="Show password" title="Show password">👁️</button>
+          </div>
         </div>
         <div class="row">
           <label for="confirmPassword">Confirm password</label>
-          <input id="confirmPassword" type="password" placeholder="Re-enter password" />
+          <div class="pwd-wrap">
+            <input id="confirmPassword" type="password" placeholder="Re-enter password" />
+            <button id="toggleConfirmPwd" type="button" class="eye-btn" aria-label="Show password" title="Show password">👁️</button>
+          </div>
         </div>
         <p class="muted">Accounts can only be created with emails ending in @srec.ac.in.</p>
         <button id="createBtn">Create account</button>

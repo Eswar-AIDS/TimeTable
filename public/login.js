@@ -11,6 +11,8 @@
   const resetBtn = document.getElementById('resetBtn');
   const loginPwdRow = document.getElementById('loginPwdRow');
   const togglePwdBtn = document.getElementById('togglePwd');
+  const toggleNewPwdBtn = document.getElementById('toggleNewPwd');
+  const toggleConfirmPwdBtn = document.getElementById('toggleConfirmPwd');
 
   const DOMAIN = '@srec.ac.in';
 
@@ -32,6 +34,26 @@
       togglePwdBtn.textContent = show ? '🙈' : '👁️';
       togglePwdBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
       togglePwdBtn.title = show ? 'Hide password' : 'Show password';
+    });
+  }
+
+  if(toggleNewPwdBtn && newPwdEl){
+    toggleNewPwdBtn.addEventListener('click', function(){
+      const show = newPwdEl.type === 'password';
+      newPwdEl.type = show ? 'text' : 'password';
+      toggleNewPwdBtn.textContent = show ? '🙈' : '👁️';
+      toggleNewPwdBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      toggleNewPwdBtn.title = show ? 'Hide password' : 'Show password';
+    });
+  }
+
+  if(toggleConfirmPwdBtn && confirmPwdEl){
+    toggleConfirmPwdBtn.addEventListener('click', function(){
+      const show = confirmPwdEl.type === 'password';
+      confirmPwdEl.type = show ? 'text' : 'password';
+      toggleConfirmPwdBtn.textContent = show ? '🙈' : '👁️';
+      toggleConfirmPwdBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      toggleConfirmPwdBtn.title = show ? 'Hide password' : 'Show password';
     });
   }
 
