@@ -117,32 +117,31 @@
       const res = await fetch(`/timetable?sheet=${encodeURIComponent(sheet)}`);
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || 'Failed');
-      // If values look like our saved timetable (with headers), render as-is.
-      // Otherwise, try to read from A1:Z50 and render whatever exists.
-      renderTable(data.values);
-      // Additionally, try to populate courses and labs from a 2-column readonly sheet
-      try{
-        const values = data.values || [];
-        // Collect non-empty first-column entries
+      const values = data.values || [];
+      const header = (values[0] || []).map(x => String(x || '').toLowerCase());
+      const looksLikeCourses = header.some(h => ['course code','course title','faculty in-charge','faculty incharge','acronym'].includes(h));
+
+      if(looksLikeCourses){
+        // Extract names from Acronym or Course Title; split labs by the word 'lab'
+        const acrIdx = header.indexOf('acronym');
+        const titleIdx = header.indexOf('course title');
         const names = [];
-        for(const row of values){
-          const cell = (row && row[0]) ? String(row[0]).trim() : '';
-          if(cell) names.push(cell);
+        for(let i = 1; i < values.length; i++){
+          const row = values[i] || [];
+          const name = (acrIdx >= 0 ? row[acrIdx] : undefined) || (titleIdx >= 0 ? row[titleIdx] : undefined) || '';
+          const trimmed = String(name || '').trim();
+          if(trimmed) names.push(trimmed);
         }
-        // Heuristic: if we have at least a few names, derive inputs
-        if(names.length >= 3){
-          const labRegex = /\blab\b/i;
-          const labNames = names.filter(n => labRegex.test(n));
-          const courseNames = names.filter(n => !labRegex.test(n));
-          if(coursesEl && courseNames.length){
-            coursesEl.value = courseNames.join(',');
-          }
-          if(labsEl && labNames.length){
-            const labPairs = labNames.map(n => `${n}:1`);
-            labsEl.value = labPairs.join(',');
-          }
-        }
-      }catch{}
+        const labRegex = /\blab\b/i;
+        const labNames = names.filter(n => labRegex.test(n));
+        const courseNames = names.filter(n => !labRegex.test(n));
+        if(coursesEl) coursesEl.value = courseNames.join(',');
+        if(labsEl) labsEl.value = labNames.map(n => `${n}:1`).join(',');
+        // Do not render the entire sheet table in UI
+      } else {
+        // Render timetable-like sheets
+        renderTable(values);
+      }
       setStatus('Loaded');
     }catch(e){
       setStatus(e.message, true);
