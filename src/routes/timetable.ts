@@ -67,6 +67,23 @@ router.get('/sheets-editable', async (_req, res) => {
   }
 });
 
+// Read from EDITABLE spreadsheet explicitly (used for Load Saved)
+router.get('/saved', async (req, res) => {
+  const sheet = (req.query.sheet as string) || 'Timetable';
+  try {
+    const sheets = getSheetsClient();
+    const env = loadEnv();
+    const spreadsheetId = env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE || env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY || (env.GOOGLE_SHEETS_SPREADSHEET_ID as string);
+    const { data } = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheet}'!A1:Z50`
+    });
+    res.json({ sheet, values: (data.values as string[][]) || [] });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // Admin can save edited rows back to Sheets
 router.put('/', async (req, res) => {
   const sheet = (req.query.sheet as string) || 'Timetable';

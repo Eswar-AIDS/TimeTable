@@ -222,7 +222,7 @@
       const sheet = effectiveSaveSheetName();
       setStatus('Loading saved...');
       try{
-        const res = await fetch(`/timetable?sheet=${encodeURIComponent(sheet)}`);
+        const res = await fetch(`/timetable/saved?sheet=${encodeURIComponent(sheet)}`);
         const data = await res.json();
         if(!res.ok) throw new Error(data.error || 'Failed');
         renderTable(data.values || []);
