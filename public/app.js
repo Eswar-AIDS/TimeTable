@@ -57,6 +57,12 @@
   }
 
   function ensureSaveButton(){
+    // If a manual save button exists in markup, don't create another.
+    const manual = document.getElementById('saveBtnManual');
+    if(manual){
+      manual.style.display = roleSelect.value === 'Admin' ? 'inline-block' : 'none';
+      return;
+    }
     let btn = document.getElementById('saveBtn');
     if(!btn){
       btn = document.createElement('button');
