@@ -368,21 +368,19 @@
   // Populate editable save sheet list
   (async function initSaveSheets(){
     try{
-      const el = document.getElementById('saveSheet');
-      if(!el) return;
+      const inputEl = document.getElementById('saveSheet');
+      const listEl = document.getElementById('saveSheetList');
+      if(!inputEl || !listEl) return;
       const res = await fetch('/timetable/sheets-editable');
       const data = await res.json();
       if(Array.isArray(data.sheets)){
-        el.innerHTML = '';
-        const optBlank = document.createElement('option');
-        optBlank.value = ''; optBlank.textContent = '(choose or use New TT)';
-        el.appendChild(optBlank);
+        listEl.innerHTML = '';
         const hidden = ['users','roles','notifications'];
         data.sheets
           .filter(name => !hidden.includes(String(name).toLowerCase()))
           .forEach(name => {
             const opt = document.createElement('option');
-            opt.value = name; opt.textContent = name; el.appendChild(opt);
+            opt.value = name; listEl.appendChild(opt);
           });
       }
     }catch{}
