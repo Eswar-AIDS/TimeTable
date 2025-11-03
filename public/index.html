@@ -1,88 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timetable Generator</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timetable Generator</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1 class="title">Timetable Generator</h1>
-            <div class="user-info">
-                <span class="user-greeting">Hi, <span id="userEmail">user@srec.ac.in</span></span>
-                <select id="roleSelect" class="role-dropdown">
-                    <option value="Admin">Role Admin</option>
-                    <option value="Student">Student</option>
-                </select>
-                <button id="logoutBtn" class="logout-btn">Logout</button>
-            </div>
-        </header>
+  <header>
+    <h1>Timetable Generator</h1>
+    <nav class="role-nav">
+      <span id="userWelcome" style="color:#94a3b8; font-size:12px; display:none;"></span>
+      <label for="roleSelect">Role</label>
+      <select id="roleSelect">
+        <option>Admin</option>
+        <option>Faculty</option>
+        <option>Student</option>
+      </select>
+      <span id="roleText" class="muted" style="display:none; font-size:12px;">Role</span>
+      <div id="notifWrap" class="notif-wrap">
+        <span id="notifBadge" class="badge">0</span>
+        <div id="notifDropdown" class="notif-dropdown">
+          <div class="notif-head">Notifications</div>
+          <div class="notif-actions">
+            <button id="notifSave" class="secondary" style="margin:6px;">Save to Sheet</button>
+            <button id="notifClear" class="danger" style="margin:6px;">Clear</button>
+          </div>
+          <ul id="notifList"></ul>
+          <div class="notif-empty" id="notifEmpty">No new requests</div>
+        </div>
+      </div>
+      <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
+    </nav>
+  </header>
+  <main>
+    <section class="config">
+      <div class="field">
+        <label for="sheet">Sheet</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="sheet" style="flex:1 1 auto;"></select>
+          <input id="sheetNew" type="text" placeholder="New TT (optional)" style="flex:1 1 auto;" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="days">Days (comma separated)</label>
+        <input id="days" type="text" value="Mon,Tue,Wed,Thu,Fri" />
+      </div>
+      <div class="field">
+        <label for="slots">Slots per day</label>
+        <input id="slots" type="number" min="1" max="12" value="6" />
+      </div>
+      <div class="field">
+        <label for="courses">Courses (comma separated)</label>
+        <input id="courses" type="text" placeholder="e.g., Math,Physics,Chemistry" />
+      </div>
+      <div class="field">
+        <label for="labs">Lab sessions (name:blocks; comma separated)</label>
+        <input id="labs" type="text" placeholder="Physics Lab:2,Chem Lab:1" />
+      </div>
+      <div class="actions">
+        <button id="generateBtn">Generate & Save</button>
+        <button id="loadBtn" class="secondary">Load Sheet</button>
+        <button id="requestBtn" class="secondary">Submit Change Request</button>
+      </div>
+      <p id="status" class="status"></p>
+    </section>
 
-        <!-- Configuration Section -->
-        <section class="config-section">
-            <div class="config-grid">
-                <div class="config-item">
-                    <label for="sheetSelect">Sheet:</label>
-                    <select id="sheetSelect" class="sheet-select">
-                        <option value="TT">TT</option>
-                    </select>
-                    <input type="text" id="newSheetInput" class="new-sheet-input" placeholder="New TT (optional)">
-                </div>
-
-                <div class="config-item">
-                    <label for="daysInput">Days (comma separated):</label>
-                    <input type="text" id="daysInput" class="config-input" value="Mon, Tue, Wed, Thu, Fri">
-                </div>
-
-                <div class="config-item">
-                    <label for="slotsInput">Slots per day:</label>
-                    <input type="text" id="slotsInput" class="config-input" value="6">
-                </div>
-
-                <div class="config-item">
-                    <label for="coursesInput">Courses (comma separated):</label>
-                    <input type="text" id="coursesInput" class="config-input" placeholder="e.g., Math, Physics, Chemistry">
-                </div>
-
-                <div class="config-item full-width">
-                    <label for="labSessionsInput">Lab sessions (name:blocks; comma separated):</label>
-                    <input type="text" id="labSessionsInput" class="config-input" value="Physics Lab:2, Chem Lab:1">
-                </div>
-            </div>
-
-            <div class="button-group">
-                <button id="generateBtn" class="btn btn-generate">Generate & Save</button>
-                <button id="loadBtn" class="btn btn-load">Load Sheet</button>
-                <button id="saveBtn" class="btn btn-save">Save to Sheet</button>
-            </div>
-
-            <div class="status">
-                <span id="statusText" class="status-text">Loaded</span>
-            </div>
-        </section>
-
-        <!-- Timetable Section -->
-        <section class="timetable-section">
-            <div class="timetable-container">
-                <table id="timetableTable" class="timetable-table">
-                    <thead>
-                        <tr>
-                            <th class="day-header"></th>
-                            <!-- Time slots will be inserted here by JavaScript -->
-                        </tr>
-                    </thead>
-                    <tbody id="timetableBody">
-                        <!-- Timetable rows will be inserted here by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </div>
-
-    <script src="app.js"></script>
+    <section class="table-wrap">
+      <table id="timetable"></table>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    // Redirect to login if no user
+    (function(){
+      try{
+        const user = JSON.parse(localStorage.getItem('tt_user') || 'null');
+        if(!user || !user.email || !user.role){ location.replace('/login.html'); return; }
+        // Preselect role from stored user
+        const roleSelect = document.getElementById('roleSelect');
+        if(roleSelect){ roleSelect.value = user.role || 'Student'; }
+        const welcome = document.getElementById('userWelcome');
+        const logoutBtn = document.getElementById('logoutBtn');
+        if(welcome){ welcome.textContent = `Hi, ${user.email}`; welcome.style.display = 'inline-block'; }
+        if(logoutBtn){
+          logoutBtn.style.display = 'inline-block';
+          logoutBtn.addEventListener('click', function(){
+            localStorage.removeItem('tt_user');
+            localStorage.removeItem('tt_role');
+            location.replace('/login.html');
+          });
+        }
+        // Hide role dropdown for non-admins and show static role text
+        const roleText = document.getElementById('roleText');
+        if(user.role !== 'Admin'){
+          if(roleSelect){ roleSelect.style.display = 'none'; }
+          if(roleText){ roleText.textContent = user.role; roleText.style.display = 'inline-block'; }
+        } else {
+          if(roleSelect){ roleSelect.style.display = 'inline-block'; }
+          if(roleText){ roleText.style.display = 'none'; }
+        }
+      }catch{ location.replace('/login.html'); }
+    })();
+  </script>
+  
 </body>
 </html>
 

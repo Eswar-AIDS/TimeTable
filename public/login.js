@@ -1,160 +1,116 @@
-const DOMAIN = '@srec.ac.in';
-const API_BASE = window.location.origin;
+(function(){
+  const emailEl = document.getElementById('email');
+  const pwdEl = document.getElementById('password');
+  const loginBtn = document.getElementById('loginBtn');
+  const toggleCreateBtn = document.getElementById('toggleCreateBtn');
+  const createBtn = document.getElementById('createBtn');
+  const createWrap = document.getElementById('createWrap');
+  const newPwdEl = document.getElementById('newPassword');
+  const confirmPwdEl = document.getElementById('confirmPassword');
+  const statusEl = document.getElementById('loginStatus');
+  const resetBtn = document.getElementById('resetBtn');
+  const loginPwdRow = document.getElementById('loginPwdRow');
 
-// Get DOM elements
-const emailEl = document.getElementById('emailInput');
-const pwdEl = document.getElementById('passwordInput');
-const newPwdEl = document.getElementById('newPasswordInput');
-const confirmPwdEl = document.getElementById('confirmPasswordInput');
-const loginBtn = document.getElementById('loginBtn');
-const createBtn = document.getElementById('createAccountBtn');
-const createSubmitBtn = document.getElementById('createAccountSubmitBtn');
-const resetBtn = document.getElementById('resetBtn');
-const togglePwdBtn = document.getElementById('togglePassword');
-const toggleNewPwdBtn = document.getElementById('toggleNewPassword');
-const toggleConfirmPwdBtn = document.getElementById('toggleConfirmPassword');
-const createAccountSection = document.getElementById('createAccountSection');
-const errorMessage = document.getElementById('errorMessage');
+  const DOMAIN = '@srec.ac.in';
 
-// Check if user is already logged in
-if (localStorage.getItem('tt_user')) {
-    window.location.href = '/';
-}
+  function setStatus(msg, isError){
+    statusEl.textContent = msg || '';
+    statusEl.style.color = isError ? '#f87171' : '#94a3b8';
+  }
 
-function isValidDomainEmail(email) {
-    return email && email.toLowerCase().endsWith(DOMAIN);
-}
+  function isValidDomainEmail(email){
+    if(!email) return false;
+    const val = String(email).trim().toLowerCase();
+    return val.endsWith(DOMAIN);
+  }
 
-function setStatus(message, isError = false) {
-    errorMessage.textContent = message;
-    errorMessage.className = 'error-message' + (isError ? ' show' : '');
-    if (!isError && message) {
-        errorMessage.style.color = '#28a745';
-        errorMessage.style.background = 'rgba(40, 167, 69, 0.1)';
-        errorMessage.classList.add('show');
+  async function api(path, body){
+    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let data = null; try { data = await res.json(); } catch {}
+    if(!res.ok){
+      let msg = 'Request failed';
+      const err = data && data.error;
+      if(typeof err === 'string') msg = err;
+      else if (err && typeof err === 'object'){
+        if (typeof err.message === 'string') msg = err.message;
+        else {
+          const parts = [];
+          const fe = err.formErrors;
+          const fiels = err.fieldErrors || err.errors || {};
+          if (Array.isArray(fe) && fe.length) parts.push(...fe);
+          if (fiels && typeof fiels === 'object'){
+            for (const k in fiels){
+              const arr = fiels[k];
+              if (Array.isArray(arr) && arr.length) parts.push(`${k}: ${arr[0]}`);
+            }
+          }
+          if (parts.length) msg = parts[0];
+        }
+      }
+      throw new Error(msg);
     }
-}
+    return data;
+  }
 
-function attachVisibilityToggle(btn, input) {
-    if (!btn || !input) return;
-    btn.addEventListener('click', function() {
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        btn.textContent = isPassword ? 'Show' : 'Hide';
-    });
-}
+  function getAccounts(){
+    try{ return JSON.parse(localStorage.getItem('tt_accounts') || '[]'); }catch{ return []; }
+  }
+  function saveAccounts(list){
+    try{ localStorage.setItem('tt_accounts', JSON.stringify(list)); }catch{}
+  }
+  function findAccount(email){
+    const all = getAccounts();
+    const target = String(email || '').trim().toLowerCase();
+    return all.find(a => (a.email || '').toLowerCase() === target);
+  }
 
-// Initialize visibility toggles
-attachVisibilityToggle(togglePwdBtn, pwdEl);
-attachVisibilityToggle(toggleNewPwdBtn, newPwdEl);
-attachVisibilityToggle(toggleConfirmPwdBtn, confirmPwdEl);
+  toggleCreateBtn.addEventListener('click', function(){
+    const opening = createWrap.style.display === 'none';
+    createWrap.style.display = opening ? 'block' : 'none';
+    // Hide login password field while in create account mode
+    if(loginPwdRow){ loginPwdRow.style.display = opening ? 'none' : 'flex'; }
+    if(resetBtn){ resetBtn.style.display = opening ? 'none' : 'inline-block'; }
+  });
 
-// Toggle create account section
-createBtn.addEventListener('click', function() {
-    createAccountSection.classList.toggle('show');
-    if (createAccountSection.classList.contains('show')) {
-        createBtn.textContent = 'Cancel';
-    } else {
-        createBtn.textContent = 'Create account';
-    }
-});
-
-// Create account
-createSubmitBtn.addEventListener('click', async function() {
+  createBtn.addEventListener('click', async function(){
     const email = (emailEl.value || '').trim().toLowerCase();
-    if (!isValidDomainEmail(email)) {
-        setStatus('Email must end with ' + DOMAIN, true);
-        return;
+    if(!isValidDomainEmail(email)){
+      setStatus('Email must end with ' + DOMAIN, true); return;
     }
-    
     const pwd = String(newPwdEl.value || '');
     const confirm = String(confirmPwdEl.value || '');
-    
-    if (pwd.length < 8) {
-        setStatus('Password must be at least 8 characters.', true);
-        return;
-    }
-    
-    if (pwd !== confirm) {
-        setStatus('Passwords do not match.', true);
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/signup`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password: pwd })
-        });
+    if(pwd.length < 8){ setStatus('Password must be at least 8 characters.', true); return; }
+    if(pwd !== confirm){ setStatus('Passwords do not match.', true); return; }
+    try{
+      await api('/auth/signup', { email, password: pwd });
+      setStatus('Account created. You can now sign in.');
+    }catch(e){ setStatus(e.message, true); }
+  });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(error.error || 'Failed to create account');
-        }
-
-        setStatus('Account created. You can now sign in.', false);
-        createAccountSection.classList.remove('show');
-        newPwdEl.value = '';
-        confirmPwdEl.value = '';
-        createBtn.textContent = 'Create account';
-    } catch (e) {
-        setStatus(e.message, true);
-    }
-});
-
-// Login
-loginBtn.addEventListener('click', async function() {
+  loginBtn.addEventListener('click', async function(){
     const email = (emailEl.value || '').trim().toLowerCase();
     const pwd = String(pwdEl.value || '');
-    
-    if (!isValidDomainEmail(email)) {
-        setStatus('Email must end with ' + DOMAIN, true);
-        return;
+    if(!isValidDomainEmail(email)){
+      setStatus('Email must end with ' + DOMAIN, true); return;
     }
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password: pwd })
-        });
+    try{
+      const data = await api('/auth/login', { email, password: pwd });
+      const role = data?.user?.role || 'Student';
+      localStorage.setItem('tt_user', JSON.stringify({ email, role }));
+      localStorage.setItem('tt_role', role);
+      location.replace('/');
+    }catch(e){ setStatus(e.message, true); }
+  });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Invalid credentials' }));
-            throw new Error(error.error || 'Login failed');
-        }
-
-        const data = await response.json();
-        const role = data?.user?.role || 'Student';
-        
-        localStorage.setItem('tt_user', JSON.stringify({ email, role }));
-        localStorage.setItem('tt_role', role);
-        
-        window.location.href = '/';
-    } catch (e) {
-        setStatus(e.message, true);
-    }
-});
-
-// Reset password
-resetBtn.addEventListener('click', function() {
+  resetBtn.addEventListener('click', async function(){
     const email = (emailEl.value || '').trim().toLowerCase();
-    if (!isValidDomainEmail(email)) {
-        setStatus('Please enter a valid email first.', true);
-        return;
-    }
-    
-    // Implement password reset logic here
-    setStatus('Password reset functionality coming soon.', false);
-});
-
-// Handle form submission
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    loginBtn.click();
-});
+    if(!isValidDomainEmail(email)) { setStatus('Enter a valid @srec.ac.in email above.', true); return; }
+    const newPwd = prompt('Enter a new password (min 8 chars):') || '';
+    if(newPwd.length < 8){ setStatus('New password must be at least 8 characters.', true); return; }
+    try{
+      await api('/auth/reset', { email, newPassword: newPwd });
+      setStatus('Password reset. You can sign in with the new password.');
+    }catch(e){ setStatus(e.message, true); }
+  });
+})();
 

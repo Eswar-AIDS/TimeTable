@@ -1,263 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Timetable Generator</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .login-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .login-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .login-subtitle {
-            color: #b0b0b0;
-            margin-bottom: 30px;
-            text-align: center;
-            font-size: 0.95rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            color: #e0e0e0;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px 14px;
-            background: #2a2a3e;
-            border: 1px solid #3a3a4e;
-            border-radius: 6px;
-            color: #e0e0e0;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #4a9eff;
-        }
-
-        .form-input::placeholder {
-            color: #666;
-        }
-
-        .form-hint {
-            color: #888;
-            font-size: 0.85rem;
-            margin-top: 5px;
-        }
-
-        .password-toggle {
-            background: none;
-            border: none;
-            color: #4a9eff;
-            cursor: pointer;
-            font-size: 0.85rem;
-            margin-left: 10px;
-        }
-
-        .password-toggle:hover {
-            text-decoration: underline;
-        }
-
-        .login-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 25px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .btn-reset {
-            background: transparent;
-            color: #4a9eff;
-            padding: 8px 0;
-            text-align: left;
-            font-size: 0.9rem;
-        }
-
-        .btn-reset:hover {
-            text-decoration: underline;
-        }
-
-        .error-message {
-            color: #dc3545;
-            background: rgba(220, 53, 69, 0.1);
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            display: none;
-        }
-
-        .error-message.show {
-            display: block;
-        }
-
-        .account-note {
-            color: #888;
-            font-size: 0.85rem;
-            margin-top: 15px;
-            text-align: center;
-        }
-
-        .password-group {
-            position: relative;
-        }
-
-        .password-group input {
-            padding-right: 80px;
-        }
-
-        .create-password-section {
-            display: none;
-            margin-top: 20px;
-        }
-
-        .create-password-section.show {
-            display: block;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - Timetable Generator</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .center { min-height: 100dvh; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .card { width:100%; max-width:380px; background:var(--card); border:1px solid #1f2937; border-radius:12px; padding:16px; }
+    .card h2 { margin:0 0 8px; }
+    .card p { margin:0 0 16px; color: var(--muted); }
+    .row { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+    .row select { background:#0b1220; color:var(--text); border:1px solid #1f2937; border-radius:8px; padding:10px 12px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .inline { display:flex; align-items:center; gap:8px; }
+    .hint { font-size:12px; color:#9ca3af; margin-top:-6px; }
+  </style>
+  <script defer src="/login.js"></script>
+  <script>
+    // Redirect if already logged in
+    (function(){
+      try{
+        const user = JSON.parse(localStorage.getItem('tt_user') || 'null');
+        if(user && user.email && user.role){ location.replace('/'); }
+      }catch{}
+    })();
+  </script>
+  
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-card">
-            <h1 class="login-title">Welcome</h1>
-            <p class="login-subtitle">Sign in to use the Timetable Generator.</p>
+  <div class="center">
+    <section class="card">
+      <h2>Welcome</h2>
+      <p>Sign in to use the Timetable Generator.</p>
 
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="emailInput">Email</label>
-                    <input 
-                        type="email" 
-                        id="emailInput" 
-                        class="form-input" 
-                        placeholder="you@srec.ac.in"
-                        required
-                    >
-                    <p class="form-hint">Use your institutional email (must end with @srec.ac.in)</p>
-                </div>
+      <div class="row">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@srec.ac.in" />
+        <span class="hint">Use your institutional email (must end with @srec.ac.in)</span>
+      </div>
+      <div class="row" id="loginPwdRow">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="Enter your password" />
+      </div>
+      <button id="resetBtn" class="secondary" style="margin-top:4px;">Reset password</button>
 
-                <div class="form-group">
-                    <label for="passwordInput">Password</label>
-                    <div class="password-group">
-                        <input 
-                            type="password" 
-                            id="passwordInput" 
-                            class="form-input" 
-                            placeholder="Enter your password"
-                        >
-                        <button type="button" class="password-toggle" id="togglePassword">Hide</button>
-                    </div>
-                </div>
+      <div class="inline" style="justify-content:space-between; margin-top:8px;">
+        <button id="loginBtn">Sign in</button>
+        <button id="toggleCreateBtn" class="secondary">Create account</button>
+      </div>
 
-                <button type="button" class="btn-reset" id="resetBtn">Reset password</button>
-
-                <div class="login-buttons">
-                    <button type="submit" class="btn btn-primary" id="loginBtn">Sign in</button>
-                    <button type="button" class="btn btn-secondary" id="createAccountBtn">Create account</button>
-                </div>
-            </form>
-
-            <!-- Create Account Section -->
-            <div id="createAccountSection" class="create-password-section">
-                <div class="form-group">
-                    <label for="newPasswordInput">Create password</label>
-                    <div class="password-group">
-                        <input 
-                            type="password" 
-                            id="newPasswordInput" 
-                            class="form-input" 
-                            placeholder="Minimum 8 characters"
-                            minlength="8"
-                        >
-                        <button type="button" class="password-toggle" id="toggleNewPassword">Hide</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="confirmPasswordInput">Confirm password</label>
-                    <div class="password-group">
-                        <input 
-                            type="password" 
-                            id="confirmPasswordInput" 
-                            class="form-input" 
-                            placeholder="Re-enter password"
-                            minlength="8"
-                        >
-                        <button type="button" class="password-toggle" id="toggleConfirmPassword">Hide</button>
-                    </div>
-                </div>
-
-                <p class="account-note">Accounts can only be created with emails ending in @srec.ac.in.</p>
-
-                <button type="button" class="btn btn-primary" id="createAccountSubmitBtn" style="width: 100%; margin-top: 15px;">Create account</button>
-            </div>
-
-            <div id="errorMessage" class="error-message"></div>
+      <div id="createWrap" style="display:none; margin-top:12px;">
+        <div class="row">
+          <label for="newPassword">Create password</label>
+          <input id="newPassword" type="password" placeholder="At least 8 characters" />
         </div>
-    </div>
+        <div class="row">
+          <label for="confirmPassword">Confirm password</label>
+          <input id="confirmPassword" type="password" placeholder="Re-enter password" />
+        </div>
+        <p class="muted">Accounts can only be created with emails ending in @srec.ac.in.</p>
+        <button id="createBtn">Create account</button>
+      </div>
 
-    <script src="login.js"></script>
+      <p id="loginStatus" class="status" style="margin-top:8px;"></p>
+    </section>
+  </div>
 </body>
 </html>
 

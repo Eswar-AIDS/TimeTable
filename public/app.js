@@ -1,388 +1,335 @@
-// API base URL - adjust if needed
-const API_BASE = window.location.origin;
+(function(){
+  // Sync role from stored user on load
+  try{
+    const user = JSON.parse(localStorage.getItem('tt_user') || 'null');
+    if(user && user.role){
+      const rs = document.getElementById('roleSelect');
+      if(rs) rs.value = user.role;
+    }
+  }catch{}
+  const statusEl = document.getElementById('status');
+  const sheetEl = document.getElementById('sheet');
+  const sheetNewEl = document.getElementById('sheetNew');
+  const daysEl = document.getElementById('days');
+  const slotsEl = document.getElementById('slots');
+  const coursesEl = document.getElementById('courses');
+  const labsEl = document.getElementById('labs');
+  const tableEl = document.getElementById('timetable');
+  const generateBtn = document.getElementById('generateBtn');
+  const loadBtn = document.getElementById('loadBtn');
+  const roleSelect = document.getElementById('roleSelect');
+  const requestBtn = document.getElementById('requestBtn');
+  const notifBadge = document.getElementById('notifBadge');
+  const notifList = document.getElementById('notifList');
+  const notifEmpty = document.getElementById('notifEmpty');
+  const notifWrap = document.getElementById('notifWrap');
+  const notifSave = document.getElementById('notifSave');
+  const notifClear = document.getElementById('notifClear');
+  const notifDropdown = document.getElementById('notifDropdown');
 
-// Helper function for API calls
-async function api(endpoint, options = {}) {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
+  function setStatus(text, isError){
+    statusEl.textContent = text || '';
+    statusEl.style.color = isError ? '#f87171' : '#94a3b8';
+  }
+
+  function renderTable(values){
+    tableEl.innerHTML = '';
+    if(!values || !values.length){ return; }
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+    values.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      row.forEach(cell => {
+        const el = document.createElement(idx === 0 ? 'th' : 'td');
+        el.textContent = cell ?? '';
+        if(idx > 0 && roleSelect.value === 'Admin') {
+          el.contentEditable = 'true';
         }
+        tr.appendChild(el);
+      });
+      if(idx === 0) thead.appendChild(tr); else tbody.appendChild(tr);
     });
+    tableEl.appendChild(thead);
+    tableEl.appendChild(tbody);
 
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(error.error || `HTTP ${response.status}`);
+    // Add Save button for Admin to persist edits
+    ensureSaveButton();
+  }
+
+  function ensureSaveButton(){
+    let btn = document.getElementById('saveBtn');
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = 'saveBtn';
+      btn.textContent = 'Save to Sheet';
+      btn.className = 'secondary';
+      document.querySelector('.actions').appendChild(btn);
+      btn.addEventListener('click', saveEdits);
     }
+    btn.style.display = roleSelect.value === 'Admin' ? 'inline-block' : 'none';
+  }
 
-    return response.json();
-}
-
-// Get user info from localStorage
-const user = JSON.parse(localStorage.getItem('tt_user') || '{"email": "user@srec.ac.in", "role": "Admin"}');
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    initializeUI();
-    loadUserInfo();
-    setupEventListeners();
-    generateTimeSlots();
-    generateTimetable();
-});
-
-function initializeUI() {
-    // Set user email if available
-    const userEmailEl = document.getElementById('userEmail');
-    if (userEmailEl && user.email) {
-        userEmailEl.textContent = user.email;
+  function updateInputsForRole(){
+    const isStudent = roleSelect.value === 'Student';
+    if(daysEl) daysEl.disabled = isStudent;
+    if(slotsEl) slotsEl.disabled = isStudent;
+    if(coursesEl) coursesEl.disabled = isStudent;
+    if(labsEl) labsEl.disabled = isStudent;
+    if(sheetNewEl) sheetNewEl.disabled = isStudent;
+    // For Faculty: disable generator inputs, but allow request button; Admin keeps enabled
+    const isFaculty = roleSelect.value === 'Faculty';
+    if(isFaculty){
+      if(daysEl) daysEl.disabled = true;
+      if(slotsEl) slotsEl.disabled = true;
+      if(coursesEl) coursesEl.disabled = true;
+      if(labsEl) labsEl.disabled = true;
+      if(sheetNewEl) sheetNewEl.disabled = true;
     }
+  }
 
-    // Set role if available
-    const roleSelect = document.getElementById('roleSelect');
-    if (roleSelect && user.role) {
-        roleSelect.value = user.role;
-    }
+  function effectiveSheetName(){
+    const fromNew = (sheetNewEl && sheetNewEl.value || '').trim();
+    return fromNew || (sheetEl && sheetEl.value) || 'Timetable';
+  }
 
-    // Check authentication
-    if (!localStorage.getItem('tt_user')) {
-        window.location.href = '/login.html';
-        return;
-    }
-}
-
-function loadUserInfo() {
-    const storedUser = localStorage.getItem('tt_user');
-    if (storedUser) {
-        try {
-            const userData = JSON.parse(storedUser);
-            document.getElementById('userEmail').textContent = userData.email || 'user@srec.ac.in';
-            const roleSelect = document.getElementById('roleSelect');
-            if (roleSelect && userData.role) {
-                roleSelect.value = userData.role;
-            }
-        } catch (e) {
-            console.error('Error loading user info:', e);
-        }
-    }
-}
-
-function setupEventListeners() {
-    // Logout
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        localStorage.removeItem('tt_user');
-        localStorage.removeItem('tt_role');
-        window.location.href = '/login.html';
+  async function saveEdits(){
+    if(roleSelect.value !== 'Admin'){ setStatus('Only Admin can save.'); return; }
+    const rows = [];
+    tableEl.querySelectorAll('tr').forEach((tr, idx) => {
+      const row = [];
+      tr.querySelectorAll(idx === 0 ? 'th' : 'td').forEach(cell => row.push(cell.textContent || ''));
+      rows.push(row);
     });
+    const sheet = effectiveSheetName();
+    setStatus('Saving...');
+    try{
+      const res = await fetch(`/timetable?sheet=${encodeURIComponent(sheet)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }) });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Failed');
+      setStatus('Saved');
+    }catch(e){ setStatus(e.message, true); }
+  }
 
-    // Generate button
-    document.getElementById('generateBtn')?.addEventListener('click', handleGenerate);
-
-    // Load button
-    document.getElementById('loadBtn')?.addEventListener('click', handleLoad);
-
-    // Save button
-    document.getElementById('saveBtn')?.addEventListener('click', handleSave);
-}
-
-// Generate time slots based on slots per day
-function generateTimeSlots() {
-    const slotsInput = document.getElementById('slotsInput');
-    const slotsPerDay = parseInt(slotsInput?.value || 6);
-    
-    // Default time slots (can be customized)
-    const timeSlots = [
-        '08:45-09:35',
-        '09:35-10:25',
-        'Break 10:25-10:45',
-        '10:45-11:35',
-        '11:35-12:25',
-        'Lunch 12:25-13:10',
-        '13:10-14:00',
-        '14:00-14:50',
-        'Break 14:50-15:00',
-        '15:00-15:50',
-        '15:50-16:40'
-    ];
-
-    const thead = document.querySelector('#timetableTable thead tr');
-    if (!thead) return;
-
-    // Clear existing headers (except day header)
-    const dayHeader = thead.querySelector('.day-header');
-    thead.innerHTML = '';
-    if (dayHeader) {
-        thead.appendChild(dayHeader);
+  async function loadSheet(){
+    const sheet = effectiveSheetName();
+    setStatus('Loading...');
+    try{
+      const res = await fetch(`/timetable?sheet=${encodeURIComponent(sheet)}`);
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Failed');
+      // If values look like our saved timetable (with headers), render as-is.
+      // Otherwise, try to read from A1:Z50 and render whatever exists.
+      renderTable(data.values);
+      setStatus('Loaded');
+    }catch(e){
+      setStatus(e.message, true);
     }
+  }
 
-    // Add time slot headers
-    timeSlots.forEach(slot => {
-        const th = document.createElement('th');
-        th.textContent = slot;
-        th.className = 'time-slot-header';
-        
-        // Mark break/lunch cells
-        if (slot.toLowerCase().includes('break')) {
-            th.classList.add('break-cell');
-        } else if (slot.toLowerCase().includes('lunch')) {
-            th.classList.add('lunch-cell');
-        }
-        
-        thead.appendChild(th);
+  async function generate(){
+    const sheet = effectiveSheetName();
+    const days = daysEl.value.split(',').map(s => s.trim()).filter(Boolean);
+    const courses = (coursesEl.value || '').split(',').map(s => s.trim()).filter(Boolean);
+    if(courses.length === 0){ setStatus('Please enter at least one course.', true); return; }
+    const labs = (labsEl.value || '').split(',').map(s => s.trim()).filter(Boolean).map(pair => {
+      const [name, blocksStr] = pair.split(':').map(x => x.trim());
+      const blocks = Math.max(1, Math.min(10, Number(blocksStr || '1')));
+      return { name, blocks };
     });
-}
+    setStatus('Generating...');
+    generateBtn.disabled = true;
+    try{
+      const res = await fetch('/timetable/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet, days, courses, labs })
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Failed');
+      renderTable(data.rows);
+      setStatus('Generated and saved');
+    }catch(e){
+      setStatus(e.message, true);
+    }finally{
+      generateBtn.disabled = false;
+    }
+  }
 
-// Generate timetable structure
-function generateTimetable() {
-    const daysInput = document.getElementById('daysInput');
-    const days = (daysInput?.value || 'Mon, Tue, Wed, Thu, Fri')
-        .split(',')
-        .map(d => d.trim())
-        .filter(d => d);
+  async function submitRequest(){
+    const role = roleSelect.value;
+    if(role !== 'Faculty') { setStatus('Only Faculty can submit requests.'); return; }
+    const message = prompt('Describe the change you want:');
+    if(!message) return;
+    setStatus('Submitting request...');
+    try{
+      let name = undefined;
+      try{ const u = JSON.parse(localStorage.getItem('tt_user') || 'null'); name = u && u.email; }catch{}
+      const res = await fetch('/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role, name, message }) });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Failed');
+      setStatus('Request submitted');
+    }catch(e){ setStatus(e.message, true); }
+  }
 
-    const tbody = document.getElementById('timetableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = '';
-
-    days.forEach(day => {
-        const row = document.createElement('tr');
-        
-        // Day header cell
-        const dayCell = document.createElement('td');
-        dayCell.textContent = day;
-        dayCell.className = 'day-header';
-        row.appendChild(dayCell);
-
-        // Time slot cells
-        const slotsPerDay = parseInt(document.getElementById('slotsInput')?.value || 6);
-        const totalSlots = 11; // Based on default time slots
-
-        for (let i = 0; i < totalSlots; i++) {
-            const cell = document.createElement('td');
-            cell.className = 'course-cell';
-            cell.textContent = '';
-            cell.contentEditable = true;
-            cell.dataset.day = day;
-            cell.dataset.slot = i;
-            row.appendChild(cell);
-        }
-
-        tbody.appendChild(row);
+  generateBtn.addEventListener('click', generate);
+  loadBtn.addEventListener('click', loadSheet);
+  roleSelect.addEventListener('change', () => {
+    // Prevent non-admins from changing role
+    try{
+      const user = JSON.parse(localStorage.getItem('tt_user') || 'null') || {};
+      if(user.role !== 'Admin'){
+        roleSelect.value = user.role || 'Student';
+        return; // ignore changes
+      }
+    }catch{}
+    try{
+      const user = JSON.parse(localStorage.getItem('tt_user') || 'null') || {};
+      user.role = roleSelect.value;
+      localStorage.setItem('tt_user', JSON.stringify(user));
+      localStorage.setItem('tt_role', user.role);
+    }catch{}
+    // Re-render current table to toggle editability
+    const current = [];
+    tableEl.querySelectorAll('tr').forEach((tr, idx) => {
+      const row = [];
+      tr.querySelectorAll('th,td').forEach(cell => row.push(cell.textContent || ''));
+      current.push(row);
     });
-}
+    if(current.length) renderTable(current);
+    const isAdmin = roleSelect.value === 'Admin';
+    generateBtn.disabled = !isAdmin;
+    generateBtn.style.display = isAdmin ? 'inline-block' : 'none';
+    requestBtn.style.display = roleSelect.value === 'Faculty' ? 'inline-block' : 'none';
+    if(notifWrap) notifWrap.style.display = isAdmin ? 'inline-block' : 'none';
+    notifBadge.style.display = isAdmin ? 'inline-block' : 'none';
+    // Rename Load button for Student role
+    loadBtn.textContent = roleSelect.value === 'Student' ? 'Generated TT' : 'Load Sheet';
+    updateInputsForRole();
+  });
 
-// Handle Generate button
-async function handleGenerate() {
-    const daysInput = document.getElementById('daysInput');
-    const slotsInput = document.getElementById('slotsInput');
-    const coursesInput = document.getElementById('coursesInput');
-    const labSessionsInput = document.getElementById('labSessionsInput');
-    const sheetSelect = document.getElementById('sheetSelect');
+  // SSE stream for admin notifications
+  function startSse(){
+    try{
+      const ev = new EventSource('/requests/stream');
+      ev.onmessage = (e) => {
+        if(roleSelect.value !== 'Admin') return;
+        try{
+          const data = JSON.parse(e.data);
+          addNotificationItem(data);
+          setStatus(`New request: ${data.message}`);
+        }catch{}
+      };
+      ev.onerror = () => { /* keep alive */ };
+    }catch{}
+  }
 
-    const days = (daysInput?.value || 'Mon, Tue, Wed, Thu, Fri')
-        .split(',')
-        .map(d => d.trim())
-        .filter(d => d);
+  startSse();
 
-    const slotsPerDay = parseInt(slotsInput?.value || 6);
-    const courses = (coursesInput?.value || '')
-        .split(',')
-        .map(c => c.trim())
-        .filter(c => c);
+  function addNotificationItem(data){
+    try{
+      const cur = Number(notifBadge.textContent || '0') + 1;
+      notifBadge.textContent = String(cur);
+      notifBadge.style.display = 'inline-block';
+      if(notifEmpty) notifEmpty.style.display = 'none';
+      if(notifList){
+        const li = document.createElement('li');
+        const name = data.name || 'Faculty';
+        const ts = data.created_at ? ` [${data.created_at}]` : '';
+        li.textContent = `${name}: ${data.message}${ts}`;
+        notifList.prepend(li);
+      }
+    }catch{}
+  }
 
-    const labSessions = parseLabSessions(labSessionsInput?.value || '');
+  // Preload recent requests for dropdown (optional)
+  (async function preloadRequests(){
+    try{
+      if(roleSelect.value !== 'Admin'){ if(notifWrap) notifWrap.style.display = 'none'; return; }
+      const res = await fetch('/requests');
+      const data = await res.json();
+      if(Array.isArray(data.rows)){
+        const recent = data.rows.slice(0, 10);
+        if(recent.length === 0 && notifEmpty) notifEmpty.style.display = 'block';
+        recent.reverse().forEach(addNotificationItem);
+      }
+    }catch{}
+  })();
 
-    const data = {
-        sheet: sheetSelect?.value || 'TT',
-        days: days,
-        slotsPerDay: slotsPerDay,
-        courses: courses,
-        labSessions: labSessions
-    };
-
-    try {
-        setStatus('Generating timetable...', false);
-        const result = await api('/api/timetable/generate', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-
-        setStatus('Timetable generated successfully!', true);
-        
-        // Reload timetable display
-        await handleLoad();
-    } catch (error) {
-        console.error('Error generating timetable:', error);
-        setStatus(`Error: ${error.message}`, false);
-    }
-}
-
-// Handle Load button
-async function handleLoad() {
-    const sheetSelect = document.getElementById('sheetSelect');
-    const sheet = sheetSelect?.value || 'TT';
-
-    try {
-        setStatus('Loading timetable...', false);
-        const data = await api(`/api/timetable?sheet=${encodeURIComponent(sheet)}`);
-        
-        // Populate timetable with loaded data
-        populateTimetable(data);
-        
-        setStatus('Loaded', true);
-    } catch (error) {
-        console.error('Error loading timetable:', error);
-        setStatus(`Error: ${error.message}`, false);
-    }
-}
-
-// Handle Save button
-async function handleSave() {
-    const sheetSelect = document.getElementById('sheetSelect');
-    const sheet = sheetSelect?.value || 'TT';
-    
-    // Get current timetable data from the table
-    const timetableData = extractTimetableData();
-    
-    // Convert to array format for Google Sheets
-    const daysInput = document.getElementById('daysInput');
-    const days = (daysInput?.value || 'Mon, Tue, Wed, Thu, Fri')
-        .split(',')
-        .map(d => d.trim())
-        .filter(d => d);
-    
-    const rows = [['Day', ...Array(11).fill(0).map((_, i) => `Slot ${i + 1}`)]];
-    days.forEach(day => {
-        const row = [day];
-        const cells = document.querySelectorAll(`td[data-day="${day}"]`);
-        cells.forEach(cell => row.push(cell.textContent.trim()));
-        rows.push(row);
+  // Save to sheet and Clear handlers (Admin only)
+  if(notifSave){
+    notifSave.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if(roleSelect.value !== 'Admin') return;
+      setStatus('Saving notifications...');
+      try{
+        const res = await fetch('/requests/export', { method: 'POST' });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || 'Failed to save');
+        setStatus(`Saved ${data.count} notifications to sheet`);
+      }catch(err){ setStatus((err && err.message) || 'Failed', true); }
     });
+  }
 
-    try {
-        setStatus('Saving timetable...', false);
-        
-        // Note: This would need a backend endpoint like POST /api/timetable/save
-        // For now, we'll use the generate endpoint or show a message
-        setStatus('Save functionality requires backend implementation', false);
-    } catch (error) {
-        console.error('Error saving timetable:', error);
-        setStatus(`Error: ${error.message}`, false);
-    }
-}
-
-// Parse lab sessions string
-function parseLabSessions(labString) {
-    if (!labString) return {};
-    
-    const sessions = {};
-    labString.split(',').forEach(session => {
-        const [name, blocks] = session.trim().split(':');
-        if (name && blocks) {
-            sessions[name.trim()] = parseInt(blocks.trim()) || 1;
-        }
+  // Toggle dropdown on click and close on outside click
+  if(notifWrap && notifBadge){
+    notifWrap.addEventListener('click', (e) => {
+      if(roleSelect.value !== 'Admin') return;
+      e.stopPropagation();
+      notifWrap.classList.toggle('open');
     });
-    
-    return sessions;
-}
-
-// Populate timetable from data
-function populateTimetable(data) {
-    // Parse the data from the API response
-    // Expected format: { rows: [[...], [...], ...] } or array of arrays
-    let rows = [];
-    
-    if (Array.isArray(data)) {
-        rows = data;
-    } else if (data.rows && Array.isArray(data.rows)) {
-        rows = data.rows;
-    } else if (data.values && Array.isArray(data.values)) {
-        rows = data.values;
-    }
-    
-    if (!rows || rows.length === 0) {
-        console.log('No data to populate');
-        return;
-    }
-    
-    // Get the days and time slots
-    const daysInput = document.getElementById('daysInput');
-    const days = (daysInput?.value || 'Mon, Tue, Wed, Thu, Fri')
-        .split(',')
-        .map(d => d.trim())
-        .filter(d => d);
-    
-    const tbody = document.getElementById('timetableBody');
-    if (!tbody) return;
-    
-    // Clear existing content except header row
-    tbody.innerHTML = '';
-    
-    // Skip first row if it's headers, start from row 1
-    const startRow = rows[0] && rows[0][0] && isNaN(rows[0][0]) ? 1 : 0;
-    
-    days.forEach((day, dayIndex) => {
-        const rowIndex = startRow + dayIndex;
-        if (rowIndex >= rows.length) return;
-        
-        const rowData = rows[rowIndex] || [];
-        const row = document.createElement('tr');
-        
-        // Day header cell
-        const dayCell = document.createElement('td');
-        dayCell.textContent = day;
-        dayCell.className = 'day-header';
-        row.appendChild(dayCell);
-        
-        // Populate cells with data (skip first column if it's day names)
-        const dataStartIndex = rowData[0] && typeof rowData[0] === 'string' && days.includes(rowData[0]) ? 1 : 0;
-        const totalSlots = 11; // Based on default time slots
-        
-        for (let i = 0; i < totalSlots; i++) {
-            const cell = document.createElement('td');
-            const dataIndex = dataStartIndex + i;
-            const cellValue = rowData[dataIndex] || '';
-            cell.textContent = cellValue;
-            cell.className = cellValue ? 'course-cell' : '';
-            cell.contentEditable = true;
-            cell.dataset.day = day;
-            cell.dataset.slot = i;
-            row.appendChild(cell);
-        }
-        
-        tbody.appendChild(row);
+    document.addEventListener('click', (e) => {
+      if(!notifWrap.classList.contains('open')) return;
+      const target = e.target;
+      if(notifWrap.contains(target)) return; // clicks inside keep open handled above
+      notifWrap.classList.remove('open');
     });
-}
-
-// Extract timetable data from table
-function extractTimetableData() {
-    const data = {};
-    const rows = document.querySelectorAll('#timetableBody tr');
-    
-    rows.forEach(row => {
-        const dayCell = row.querySelector('.day-header');
-        const day = dayCell?.textContent.trim();
-        
-        if (day) {
-            data[day] = [];
-            const cells = row.querySelectorAll('td:not(.day-header)');
-            cells.forEach((cell, index) => {
-                data[day][index] = cell.textContent.trim();
-            });
-        }
+  }
+  if(notifClear){
+    notifClear.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if(roleSelect.value !== 'Admin') return;
+      const ok = confirm('Clear all notifications? They should be saved first.');
+      if(!ok) return;
+      try{
+        const res = await fetch('/requests', { method: 'DELETE' });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || 'Failed to clear');
+        // reset UI
+        notifBadge.textContent = '0';
+        if(notifList) notifList.innerHTML = '';
+        if(notifEmpty) notifEmpty.style.display = 'block';
+        setStatus('Notifications cleared');
+      }catch(err){ setStatus((err && err.message) || 'Failed', true); }
     });
-    
-    return data;
-}
+  }
 
-// Set status message
-function setStatus(message, isSuccess = true) {
-    const statusText = document.getElementById('statusText');
-    if (statusText) {
-        statusText.textContent = message;
-        statusText.style.color = isSuccess ? '#28a745' : '#dc3545';
-    }
-}
+  // Initialize role-specific UI on first load
+  loadBtn.textContent = roleSelect.value === 'Student' ? 'Generated TT' : 'Load Sheet';
+  requestBtn.style.display = roleSelect.value === 'Faculty' ? 'inline-block' : 'none';
+  generateBtn.style.display = roleSelect.value === 'Admin' ? 'inline-block' : 'none';
+  requestBtn.addEventListener('click', submitRequest);
+  updateInputsForRole();
+
+  // Populate sheet list
+  (async function initSheets(){
+    try{
+      const res = await fetch('/timetable/sheets');
+      const data = await res.json();
+      if(Array.isArray(data.sheets)){
+        sheetEl.innerHTML = '';
+        const hidden = ['users','roles','notifications'];
+        data.sheets
+          .filter(name => !hidden.includes(String(name).toLowerCase()))
+          .forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name; sheetEl.appendChild(opt);
+          });
+      }
+    }catch{}
+  })();
+
+  // initial load
+  loadSheet();
+})();
 
 
