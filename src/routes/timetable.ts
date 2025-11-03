@@ -53,6 +53,20 @@ router.get('/sheets', async (_req, res) => {
   }
 });
 
+// List sheet tabs from the EDITABLE spreadsheet for Save menu
+router.get('/sheets-editable', async (_req, res) => {
+  try {
+    const sheets = getSheetsClient();
+    const env = loadEnv();
+    const spreadsheetId = env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE || env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY || (env.GOOGLE_SHEETS_SPREADSHEET_ID as string);
+    const { data } = await sheets.spreadsheets.get({ spreadsheetId });
+    const names = (data.sheets || []).map(s => s.properties?.title).filter(Boolean) as string[];
+    res.json({ sheets: names });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // Admin can save edited rows back to Sheets
 router.put('/', async (req, res) => {
   const sheet = (req.query.sheet as string) || 'Timetable';

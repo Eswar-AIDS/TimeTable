@@ -43,6 +43,10 @@
         </div>
       </div>
       <div class="field">
+        <label for="saveSheet">Save to (editable)</label>
+        <select id="saveSheet"></select>
+      </div>
+      <div class="field">
         <label for="days">Days (comma separated)</label>
         <input id="days" type="text" value="Mon,Tue,Wed,Thu,Fri" />
       </div>
@@ -61,6 +65,7 @@
       <div class="actions">
         <button id="generateBtn">Generate & Save</button>
         <button id="loadBtn" class="secondary">Load Sheet</button>
+        <button id="saveBtnManual" class="secondary">Save to Sheet</button>
         <button id="requestBtn" class="secondary">Submit Change Request</button>
       </div>
       <p id="status" class="status"></p>

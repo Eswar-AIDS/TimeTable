@@ -92,6 +92,14 @@
     return fromNew || (sheetEl && sheetEl.value) || 'Timetable';
   }
 
+  function effectiveSaveSheetName(){
+    const fromNew = (sheetNewEl && sheetNewEl.value || '').trim();
+    if(fromNew) return fromNew;
+    const saveSelect = document.getElementById('saveSheet');
+    const selected = saveSelect ? (saveSelect.value || '').trim() : '';
+    return selected || effectiveSheetName();
+  }
+
   async function saveEdits(){
     if(roleSelect.value !== 'Admin'){ setStatus('Only Admin can save.'); return; }
     const rows = [];
@@ -100,7 +108,7 @@
       tr.querySelectorAll(idx === 0 ? 'th' : 'td').forEach(cell => row.push(cell.textContent || ''));
       rows.push(row);
     });
-    const sheet = effectiveSheetName();
+    const sheet = effectiveSaveSheetName();
     setStatus('Saving...');
     try{
       const res = await fetch(`/timetable?sheet=${encodeURIComponent(sheet)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }) });
@@ -169,7 +177,7 @@
       const res = await fetch('/timetable/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet, days, courses, labs })
+        body: JSON.stringify({ sheet: effectiveSaveSheetName(), days, courses, labs })
       });
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || 'Failed');
@@ -200,6 +208,8 @@
 
   generateBtn.addEventListener('click', generate);
   loadBtn.addEventListener('click', loadSheet);
+  const saveManualBtn = document.getElementById('saveBtnManual');
+  if(saveManualBtn) saveManualBtn.addEventListener('click', saveEdits);
   roleSelect.addEventListener('change', () => {
     // Prevent non-admins from changing role
     try{
@@ -350,6 +360,29 @@
           .forEach(name => {
             const opt = document.createElement('option');
             opt.value = name; opt.textContent = name; sheetEl.appendChild(opt);
+          });
+      }
+    }catch{}
+  })();
+
+  // Populate editable save sheet list
+  (async function initSaveSheets(){
+    try{
+      const el = document.getElementById('saveSheet');
+      if(!el) return;
+      const res = await fetch('/timetable/sheets-editable');
+      const data = await res.json();
+      if(Array.isArray(data.sheets)){
+        el.innerHTML = '';
+        const optBlank = document.createElement('option');
+        optBlank.value = ''; optBlank.textContent = '(choose or use New TT)';
+        el.appendChild(optBlank);
+        const hidden = ['users','roles','notifications'];
+        data.sheets
+          .filter(name => !hidden.includes(String(name).toLowerCase()))
+          .forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name; el.appendChild(opt);
           });
       }
     }catch{}
