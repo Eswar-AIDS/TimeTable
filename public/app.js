@@ -188,7 +188,8 @@
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || 'Failed');
       renderTable(data.rows);
-      setStatus('Generated and saved');
+      const msg = (data && data.saved) ? 'Generated and saved' : 'Generated';
+      setStatus(msg);
     }catch(e){
       setStatus(e.message, true);
     }finally{
