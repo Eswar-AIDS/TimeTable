@@ -104,6 +104,7 @@ router.post('/generate', async (req, res) => {
     return res.status(400).json({ error: parse.error.flatten() });
   }
   let { sheet, days, courses, labs } = parse.data;
+  const save = Boolean((req.body && (req.body.save === true || req.body.save === 'true')));
 
   // Normalize days
   if (days.length === 5) {
@@ -259,12 +260,14 @@ router.post('/generate', async (req, res) => {
   }
 
   try {
-    const lastColIndex = displayHeader.length - 1;
-    const lastCol = String.fromCharCode(65 + lastColIndex);
-    // Clear previous contents before writing new shape
-    await clearRange({ sheetName: sheet, rangeA1: `A1:Z100` });
-    await writeRange({ sheetName: sheet, rangeA1: `A1:${lastCol}${days.length + 1}` }, rows);
-    res.json({ ok: true, sheet, periodLabels, rows });
+    if (save) {
+      const lastColIndex = displayHeader.length - 1;
+      const lastCol = String.fromCharCode(65 + lastColIndex);
+      // Clear previous contents before writing new shape
+      await clearRange({ sheetName: sheet, rangeA1: `A1:Z100` });
+      await writeRange({ sheetName: sheet, rangeA1: `A1:${lastCol}${days.length + 1}` }, rows);
+    }
+    res.json({ ok: true, sheet, periodLabels, rows, saved: save });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

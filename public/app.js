@@ -183,7 +183,7 @@
       const res = await fetch('/timetable/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: effectiveSaveSheetName(), days, courses, labs })
+        body: JSON.stringify({ sheet: effectiveSaveSheetName(), days, courses, labs, save: false })
       });
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || 'Failed');
