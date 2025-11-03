@@ -216,6 +216,20 @@
   loadBtn.addEventListener('click', loadSheet);
   const saveManualBtn = document.getElementById('saveBtnManual');
   if(saveManualBtn) saveManualBtn.addEventListener('click', saveEdits);
+  const loadSavedBtn = document.getElementById('loadSavedBtn');
+  if(loadSavedBtn){
+    loadSavedBtn.addEventListener('click', async function(){
+      const sheet = effectiveSaveSheetName();
+      setStatus('Loading saved...');
+      try{
+        const res = await fetch(`/timetable?sheet=${encodeURIComponent(sheet)}`);
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || 'Failed');
+        renderTable(data.values || []);
+        setStatus('Loaded');
+      }catch(e){ setStatus(e.message, true); }
+    });
+  }
   roleSelect.addEventListener('change', () => {
     // Prevent non-admins from changing role
     try{
