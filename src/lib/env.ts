@@ -8,7 +8,11 @@ const EnvSchema = z.object({
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
   GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   GOOGLE_SERVICE_ACCOUNT_JSON_B64: z.string().optional(),
-  GOOGLE_SHEETS_SPREADSHEET_ID: z.string(),
+  // Base spreadsheet ID (backward compatibility)
+  GOOGLE_SHEETS_SPREADSHEET_ID: z.string().optional(),
+  // Optional overrides for read vs write
+  GOOGLE_SHEETS_SPREADSHEET_ID_READONLY: z.string().optional(),
+  GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE: z.string().optional(),
   ALLOWED_ORIGINS: z.string().default(''),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
@@ -19,7 +23,10 @@ const EnvSchema = z.object({
   SMTP_PASS: z.string().optional(),
   ADMIN_EMAIL: z.string().optional(),
   FROM_EMAIL: z.string().optional()
-});
+}).refine((env) => {
+  // Ensure at least one spreadsheet id is provided
+  return Boolean(env.GOOGLE_SHEETS_SPREADSHEET_ID || env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE || env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY);
+}, { message: 'GOOGLE_SHEETS_SPREADSHEET_ID (or *_READONLY / *_EDITABLE) is required' });
 
 export type Env = z.infer<typeof EnvSchema>;
 

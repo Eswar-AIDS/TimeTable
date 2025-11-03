@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { readRange, writeRange, clearRange } from '../lib/sheets';
 import { getSheetsClient } from '../lib/sheets';
+import { loadEnv } from '../lib/env';
 
 const router = Router();
 
@@ -42,7 +43,9 @@ router.get('/', async (req, res) => {
 router.get('/sheets', async (_req, res) => {
   try {
     const sheets = getSheetsClient();
-    const { data } = await sheets.spreadsheets.get({ spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID as string });
+    const env = loadEnv();
+    const spreadsheetId = env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY || env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE || (env.GOOGLE_SHEETS_SPREADSHEET_ID as string);
+    const { data } = await sheets.spreadsheets.get({ spreadsheetId });
     const names = (data.sheets || []).map(s => s.properties?.title).filter(Boolean) as string[];
     res.json({ sheets: names });
   } catch (err) {

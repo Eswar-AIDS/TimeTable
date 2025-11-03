@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { getSheetsClient, readRange, writeRange } from '../lib/sheets';
+import { loadEnv } from '../lib/env';
 
 const router = Router();
 
@@ -9,21 +10,60 @@ const DOMAIN = '@srec.ac.in';
 const USERS_SHEET = 'Users';
 const ROLES_SHEET = 'Roles';
 
+function getEditableSpreadsheetId(): string {
+  const env = loadEnv();
+  return (
+    env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE ||
+    env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY ||
+    (env.GOOGLE_SHEETS_SPREADSHEET_ID as string)
+  );
+}
+
+async function ensureSheetExistsAuth(sheetName: string): Promise<void> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getEditableSpreadsheetId();
+  const ss = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = (ss.data.sheets || []).some(s => s.properties?.title === sheetName);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
+    });
+  }
+}
+
 function sha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
 async function ensureUsersHeader() {
-  const rows = await readRange({ sheetName: USERS_SHEET, rangeA1: 'A1:C1' });
-  const header = rows[0] || [];
+  const sheets = getSheetsClient();
+  const spreadsheetId = getEditableSpreadsheetId();
+  await ensureSheetExistsAuth(USERS_SHEET);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${USERS_SHEET}'!A1:C1`
+  });
+  const header = (res.data.values as string[][])?.[0] || [];
   if ((header[0] || '').toLowerCase() !== 'email' || (header[1] || '').toLowerCase() !== 'passwordhash' || (header[2] || '').toLowerCase() !== 'role') {
-    await writeRange({ sheetName: USERS_SHEET, rangeA1: 'A1:C1' }, [[ 'email', 'passwordHash', 'role' ]]);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${USERS_SHEET}'!A1:C1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[ 'email', 'passwordHash', 'role' ]] }
+    });
   }
 }
 
 async function getAllUsers(): Promise<Array<{ email: string; passwordHash: string; role: string }>> {
   await ensureUsersHeader();
-  const rows = await readRange({ sheetName: USERS_SHEET, rangeA1: 'A2:C2000' });
+  const sheets = getSheetsClient();
+  const spreadsheetId = getEditableSpreadsheetId();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${USERS_SHEET}'!A2:C2000`
+  });
+  const rows = (res.data.values as string[][]) || [];
   const users: Array<{ email: string; passwordHash: string; role: string }> = [];
   for (const r of rows) {
     const [email, passwordHash, role] = [r[0] || '', r[1] || '', r[2] || ''];
@@ -145,8 +185,9 @@ router.post('/signup', async (req, res) => {
     const roleOverride = await getRoleForEmail(email);
     const sheets = getSheetsClient();
     await ensureUsersHeader();
+    const spreadsheetId = getEditableSpreadsheetId();
     await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID as string,
+      spreadsheetId,
       range: `'${USERS_SHEET}'!A1:C1`,
       valueInputOption: 'RAW',
       requestBody: { values: [[ email, passwordHash, roleOverride || 'Student' ]] }
@@ -182,7 +223,13 @@ router.post('/reset', async (req, res) => {
   try {
     await seedRoles();
     await ensureUsersHeader();
-    const all = await readRange({ sheetName: USERS_SHEET, rangeA1: 'A2:C2000' });
+    const sheets = getSheetsClient();
+    const spreadsheetId = getEditableSpreadsheetId();
+    const valuesRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${USERS_SHEET}'!A2:C2000`
+    });
+    const all = (valuesRes.data.values as string[][]) || [];
     let targetRowIndex = -1; // 0-based within A2:C2000
     for (let i = 0; i < all.length; i++) {
       if ((all[i][0] || '').toString().toLowerCase() === email) { targetRowIndex = i; break; }
@@ -190,7 +237,12 @@ router.post('/reset', async (req, res) => {
     if (targetRowIndex === -1) return res.status(404).json({ error: 'Account not found' });
     const absoluteRow = 2 + targetRowIndex; // actual row number in sheet
     const currentRole = all[targetRowIndex][2] || 'Student';
-    await writeRange({ sheetName: USERS_SHEET, rangeA1: `A${absoluteRow}:C${absoluteRow}` }, [[ email, newHash, currentRole ]]);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${USERS_SHEET}'!A${absoluteRow}:C${absoluteRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[ email, newHash, currentRole ]] }
+    });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

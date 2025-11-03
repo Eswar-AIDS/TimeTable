@@ -47,7 +47,7 @@ router.get('/credentials', async (_req, res) => {
     try {
       const sheets = getSheetsClient();
       await sheets.spreadsheets.values.get({
-        spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+        spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY || env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE || (env.GOOGLE_SHEETS_SPREADSHEET_ID as string),
         range: 'A1:A1'
       });
       result.canAccessSheetsApi = true;

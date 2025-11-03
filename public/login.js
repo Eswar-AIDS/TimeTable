@@ -10,6 +10,7 @@
   const statusEl = document.getElementById('loginStatus');
   const resetBtn = document.getElementById('resetBtn');
   const loginPwdRow = document.getElementById('loginPwdRow');
+  const togglePwdBtn = document.getElementById('togglePwd');
 
   const DOMAIN = '@srec.ac.in';
 
@@ -24,8 +25,20 @@
     return val.endsWith(DOMAIN);
   }
 
+  if(togglePwdBtn && pwdEl){
+    togglePwdBtn.addEventListener('click', function(){
+      const show = pwdEl.type === 'password';
+      pwdEl.type = show ? 'text' : 'password';
+      togglePwdBtn.textContent = show ? '🙈' : '👁️';
+      togglePwdBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      togglePwdBtn.title = show ? 'Hide password' : 'Show password';
+    });
+  }
+
   async function api(path, body){
-    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const base = (window.API_BASE_URL || '').trim().replace(/\/$/, '');
+    const url = base ? (base + path) : path;
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     let data = null; try { data = await res.json(); } catch {}
     if(!res.ok){
       let msg = 'Request failed';

@@ -42,36 +42,51 @@ export function getSheetsClient() {
   return google.sheets({ version: 'v4', auth });
 }
 
-async function ensureSheetExists(sheetName: string): Promise<void> {
+function getSpreadsheetIdForRead(): string {
   const env = loadEnv();
+  return (
+    env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY ||
+    env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE ||
+    (env.GOOGLE_SHEETS_SPREADSHEET_ID as string)
+  );
+}
+
+function getSpreadsheetIdForWrite(): string {
+  const env = loadEnv();
+  return (
+    env.GOOGLE_SHEETS_SPREADSHEET_ID_EDITABLE ||
+    env.GOOGLE_SHEETS_SPREADSHEET_ID_READONLY ||
+    (env.GOOGLE_SHEETS_SPREADSHEET_ID as string)
+  );
+}
+
+async function ensureSheetExists(sheetName: string): Promise<void> {
   const sheets = getSheetsClient();
-  const ss = await sheets.spreadsheets.get({ spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID });
+  const ss = await sheets.spreadsheets.get({ spreadsheetId: getSpreadsheetIdForWrite() });
   const exists = (ss.data.sheets || []).some(s => s.properties?.title === sheetName);
   if (!exists) {
     await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+      spreadsheetId: getSpreadsheetIdForWrite(),
       requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
     });
   }
 }
 
 export async function readRange({ sheetName, rangeA1 }: SheetRange): Promise<string[][]> {
-  const env = loadEnv();
   const sheets = getSheetsClient();
   try { await ensureSheetExists(sheetName); } catch {}
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    spreadsheetId: getSpreadsheetIdForRead(),
     range: `'${sheetName}'!${rangeA1}`
   });
   return (res.data.values as string[][]) || [];
 }
 
 export async function writeRange({ sheetName, rangeA1 }: SheetRange, values: unknown[][]): Promise<void> {
-  const env = loadEnv();
   const sheets = getSheetsClient();
   await ensureSheetExists(sheetName);
   await sheets.spreadsheets.values.update({
-    spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    spreadsheetId: getSpreadsheetIdForWrite(),
     range: `'${sheetName}'!${rangeA1}`,
     valueInputOption: 'RAW',
     requestBody: { values }
@@ -79,11 +94,10 @@ export async function writeRange({ sheetName, rangeA1 }: SheetRange, values: unk
 }
 
 export async function clearRange({ sheetName, rangeA1 }: SheetRange): Promise<void> {
-  const env = loadEnv();
   const sheets = getSheetsClient();
   await ensureSheetExists(sheetName);
   await sheets.spreadsheets.values.clear({
-    spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    spreadsheetId: getSpreadsheetIdForWrite(),
     range: `'${sheetName}'!${rangeA1}`
   });
 }

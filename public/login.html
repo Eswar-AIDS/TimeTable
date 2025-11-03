@@ -15,7 +15,12 @@
     .muted { color: var(--muted); font-size: 12px; }
     .inline { display:flex; align-items:center; gap:8px; }
     .hint { font-size:12px; color:#9ca3af; margin-top:-6px; }
+    .pwd-wrap { position: relative; }
+    .pwd-wrap input { width: 100%; padding-right: 44px; }
+    .eye-btn { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:#9ca3af; cursor:pointer; padding:4px; }
+    .eye-btn:focus { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius:6px; }
   </style>
+  <script src="/config.js"></script>
   <script defer src="/login.js"></script>
   <script>
     // Redirect if already logged in
@@ -41,7 +46,10 @@
       </div>
       <div class="row" id="loginPwdRow">
         <label for="password">Password</label>
-        <input id="password" type="password" placeholder="Enter your password" />
+        <div class="pwd-wrap">
+          <input id="password" type="password" placeholder="Enter your password" />
+          <button id="togglePwd" type="button" class="eye-btn" aria-label="Show password" title="Show password">👁️</button>
+        </div>
       </div>
       <button id="resetBtn" class="secondary" style="margin-top:4px;">Reset password</button>
 
